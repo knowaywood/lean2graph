@@ -21,9 +21,21 @@ def get_seqTactics (seq : TSyntax ``Parser.Tactic.tacticSeq) : Array (TSyntax `t
   | `(tacticSeq| { $seq:tactic;* }) => seq.getElems
   | _ => #[]
 
-elab "extract_tdg' " seq:tacticSeq : tactic => do
+partial def flattenTactics (tac : TSyntax `tactic) : Array (TSyntax `tactic) :=
+  match tac with
+  | `(tactic| · $seq:tacticSeq) =>
+      get_seqTactics seq |>.flatMap flattenTactics
+  | _ => #[tac]
 
-  let tactics := get_seqTactics seq
+def get_seqTacticsFlattened (seq : TSyntax ``Parser.Tactic.tacticSeq) : Array (TSyntax `tactic) :=
+  match seq with
+  | `(tacticSeq| $seq:tactic;*) => seq.getElems.flatMap flattenTactics
+  | `(tacticSeq| { $seq:tactic;* }) => seq.getElems.flatMap flattenTactics
+  | _ => #[]
+
+elab "extract_tdg " seq:tacticSeq : tactic => do
+
+  let tactics := get_seqTacticsFlattened seq
   let mut nodes : Array TacticNode := #[]
   let mut edges : Array DependencyEdge := #[]
   let mut allGoals : OrderedSet MVarId := OrderedSet.empty
